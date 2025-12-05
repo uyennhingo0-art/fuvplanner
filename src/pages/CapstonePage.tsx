@@ -1,8 +1,17 @@
+import { useMemo } from 'react';
 import { CapstoneCard } from '../components/CapstoneCard';
 import { AlertBanner } from '../components/AlertBanner';
 import { CheckCircle2, Clock } from 'lucide-react';
+import { loadStudentData } from '../api/dataStore';
+import { computeAcademicProgress } from '../api/requirements';
 
 export function CapstonePage() {
+  const data = useMemo(() => loadStudentData(), []);
+  const summary = useMemo(
+    () => computeAcademicProgress(data.courses, data.profile),
+    [data]
+  );
+
   const capstoneProject = {
     title: 'AI-Powered Educational Recommendation System',
     advisor: 'Dr. Minh Nguyen',
@@ -20,9 +29,9 @@ export function CapstonePage() {
   };
 
   const eligibilityRequirements = [
-    { label: 'Total Credits Completed', value: 64, required: 80, met: false },
-    { label: 'GPA Requirement', value: 3.67, required: 2.0, met: true },
-    { label: 'Major Requirements', value: 12, required: 32, met: false },
+    { label: 'Total Credits Completed', value: summary.totalCredits, required: 80, met: summary.totalCredits >= 80 },
+    { label: 'Major Credits', value: summary.major.completed, required: 32, met: summary.major.completed >= 32 },
+    { label: 'GPA Requirement', value: summary.gpa ?? 'N/A', required: 2.0, met: (summary.gpa ?? 0) >= 2.0 },
     { label: 'No Academic Probation', value: 'Good Standing', required: 'Good Standing', met: true },
   ];
 
@@ -78,10 +87,10 @@ export function CapstonePage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Eligibility Checklist</h2>
 
-        {eligibilityRequirements.some((r) => !r.met) && (
+        {!summary.capstoneEligible && (
           <AlertBanner
             type="info"
-            message="You need to complete 16 more credits before starting your capstone project. Plan your courses accordingly!"
+            message="You need 80 credits and at least 32 major credits before starting Capstone I."
             dismissible
           />
         )}
@@ -121,46 +130,18 @@ export function CapstonePage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Office Hours</p>
-              <p className="font-medium text-gray-900">Tue & Thu 2-4 PM</p>
+              <p className="font-medium text-gray-900">Tue/Thu 2:00 - 4:00 PM</p>
             </div>
-            <button className="w-full mt-3 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-900 transition-colors">
-              Schedule Meeting
-            </button>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-3">Resources</h3>
-          <div className="space-y-2">
-            <a
-              href="#"
-              className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <p className="font-medium text-gray-900 text-sm">Capstone Guidelines</p>
-              <p className="text-xs text-gray-600 mt-1">Full requirements and expectations</p>
-            </a>
-            <a
-              href="#"
-              className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <p className="font-medium text-gray-900 text-sm">IRB Application</p>
-              <p className="text-xs text-gray-600 mt-1">If your project involves human subjects</p>
-            </a>
-            <a
-              href="#"
-              className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <p className="font-medium text-gray-900 text-sm">Writing Center</p>
-              <p className="text-xs text-gray-600 mt-1">Get help with your capstone writing</p>
-            </a>
-            <a
-              href="#"
-              className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <p className="font-medium text-gray-900 text-sm">Research Database Access</p>
-              <p className="text-xs text-gray-600 mt-1">Access library resources</p>
-            </a>
-          </div>
+          <h3 className="font-semibold text-gray-900 mb-3">Next Steps</h3>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li>• Confirm eligibility once 80 credits are posted</li>
+            <li>• Enroll in Capstone I for the upcoming term</li>
+            <li>• Continue progress on research milestones</li>
+          </ul>
         </div>
       </div>
     </div>
