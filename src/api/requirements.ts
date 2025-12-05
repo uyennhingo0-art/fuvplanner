@@ -116,7 +116,9 @@ function majorProgress(courses: Course[]): RequirementProgress & { upperLevel: n
   const config = requirementsConfig.major;
   const majorCourses = courses.filter((course) => course.categories.includes('major'));
   const completedMajor = majorCourses.filter((course) => course.status === 'completed');
-  const upperLevel = completedMajor.filter((course) => course.level >= 300).length * 4;
+  const upperLevel = completedMajor
+    .filter((course) => course.level >= 300)
+    .reduce((sum, course) => sum + course.credits, 0);
 
   const overlappingCredits = completedMajor.reduce((total, course) => {
     const overlaps = course.categories.filter((category) => ['exploratory', 'minor'].includes(category));

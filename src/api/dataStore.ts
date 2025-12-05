@@ -331,8 +331,51 @@ export const courseTemplateHeader =
 
 export function getCourseTemplateCsv() {
   const sampleRow =
-    'CS 201,Data Structures & Algorithms,4,major,Spring,2025,Mon/Wed,09:00,10:15,Dr. Tran,A201,"CS","","STEM","",planned,';
+    'CS 201,Data Structures & Algorithms,4,major,Spring,2025,Mon/Wed,09:00,10:15,Dr. Tran,A201,CS,,STEM,,planned,';
   return `${courseTemplateHeader}\n${sampleRow}`;
+}
+
+function parseCsvLine(line: string) {
+  const cells: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (char === ',' && !inQuotes) {
+      cells.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current);
+  return cells.map((cell) => cell.trim());
+}
+
+function normalizeCategories(cellMap: Record<string, string>): Course['categories'] {
+  const validCategories: Course['categories'][number][] = [
+    'core',
+    'exploratory',
+    'major',
+    'minor',
+    'elective',
+    'capstone',
+    'elp',
+    'moet',
+  ];
+
+  const raw = cellMap.categories || cellMap.category;
+  if (!raw) return ['elective'];
+  const entries = raw.split(';').map((entry) => entry.trim()).filter(Boolean);
+  const mapped = entries.filter((entry): entry is Course['categories'][number] =>
+    validCategories.includes(entry as Course['categories'][number])
+  );
+  return mapped.length > 0 ? mapped : ['elective'];
 }
 
 export function parseCsv(content: string): Course[] {
@@ -341,7 +384,7 @@ export function parseCsv(content: string): Course[] {
     .map((line) => line.trim())
     .filter(Boolean);
   const [header, ...rows] = lines;
-  const columns = header.split(',');
+  const columns = parseCsvLine(header);
   const requiredColumns = ['courseCode', 'title', 'credits', 'term', 'year'];
   for (const col of requiredColumns) {
     if (!columns.includes(col)) {
@@ -350,21 +393,31 @@ export function parseCsv(content: string): Course[] {
   }
 
   return rows.map((row, index) => {
-    const cells = row.split(',');
+    const cells = parseCsvLine(row);
     const cellMap: Record<string, string> = {};
     columns.forEach((col, i) => {
-      cellMap[col] = cells[i]?.replace(/^"|"$/g, '') ?? '';
+      cellMap[col] = cells[i] ?? '';
     });
 
+    if (!cellMap.courseCode || !cellMap.title) {
+      throw new Error(`Row ${index + 2}: courseCode and title are required.`);
+    }
+
+    const credits = Number(cellMap.credits);
+    if (Number.isNaN(credits)) {
+      throw new Error(`Row ${index + 2}: credits must be a number.`);
+    }
+
     const baseId = `${cellMap.courseCode || 'course'}-${index}`;
+    const categories = normalizeCategories(cellMap);
 
     return {
       id: baseId,
       courseCode: cellMap.courseCode,
       title: cellMap.title,
-      credits: Number(cellMap.credits) || 0,
+      credits,
       level: 100,
-      categories: cellMap.category ? [cellMap.category as Course['categories'][number]] : ['elective'],
+      categories,
       exploratoryArea: (cellMap.exploratoryArea as Course['exploratoryArea']) || undefined,
       majorTags: cellMap.majorTags ? cellMap.majorTags.split(';').filter(Boolean) : undefined,
       minorTags: cellMap.minorTags ? cellMap.minorTags.split(';').filter(Boolean) : undefined,
@@ -380,7 +433,7 @@ export function parseCsv(content: string): Course[] {
         : undefined,
       status: (cellMap.status as Course['status']) || 'planned',
       grade: (cellMap.grade as Course['grade']) || null,
-      countsTowardGPA: cellMap.category !== 'moet',
+      countsTowardGPA: !categories.includes('moet'),
     };
   });
 }
