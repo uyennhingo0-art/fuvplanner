@@ -1,53 +1,13 @@
+import { useMemo, useState } from 'react';
 import { StudyGroupCard } from '../components/StudyGroupCard';
 import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { joinStudyGroup, listStudyGroups } from '../api/dataStore';
 
 export function StudyGroupsPage() {
   const [joinedGroups, setJoinedGroups] = useState(['sg-2']);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const groups = [
-    {
-      id: 'sg-1',
-      courseCode: 'CS 201',
-      courseName: 'Data Structures & Algorithms',
-      groupName: 'Morning Study Group',
-      memberCount: 5,
-      maxMembers: 6,
-    },
-    {
-      id: 'sg-2',
-      courseCode: 'CS 201',
-      courseName: 'Data Structures & Algorithms',
-      groupName: 'Evening Coders',
-      memberCount: 4,
-      maxMembers: 6,
-    },
-    {
-      id: 'sg-3',
-      courseCode: 'ECON 201',
-      courseName: 'Principles of Economics',
-      groupName: 'Econ Study Squad',
-      memberCount: 6,
-      maxMembers: 6,
-    },
-    {
-      id: 'sg-4',
-      courseCode: 'ECON 201',
-      courseName: 'Principles of Economics',
-      groupName: 'Problem Solvers',
-      memberCount: 3,
-      maxMembers: 6,
-    },
-    {
-      id: 'sg-5',
-      courseCode: 'GH 202',
-      courseName: 'Global Humanities II',
-      groupName: 'Humanities Enthusiasts',
-      memberCount: 2,
-      maxMembers: 8,
-    },
-  ];
+  const groups = useMemo(() => listStudyGroups(), [joinedGroups.length]);
 
   const filteredGroups = groups.filter(
     (group) =>
@@ -57,7 +17,8 @@ export function StudyGroupsPage() {
   );
 
   const handleJoin = (groupId: string) => {
-    setJoinedGroups([...joinedGroups, groupId]);
+    joinStudyGroup(groupId);
+    setJoinedGroups((prev) => (prev.includes(groupId) ? prev : [...prev, groupId]));
   };
 
   return (
