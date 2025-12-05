@@ -14,6 +14,7 @@ const defaultData: StudentData = {
     {
       id: 'core-gh',
       courseCode: 'GH 101',
+      code: 'GH 101',
       title: 'Global Humanities',
       credits: 4,
       level: 100,
@@ -33,6 +34,7 @@ const defaultData: StudentData = {
     {
       id: 'core-mvcs',
       courseCode: 'VCS 101',
+      code: 'VCS 101',
       title: 'Modern Vietnamese Culture & Society',
       credits: 4,
       level: 100,
@@ -51,6 +53,7 @@ const defaultData: StudentData = {
     {
       id: 'core-dst',
       courseCode: 'DST 101',
+      code: 'DST 101',
       title: 'Design & Systems Thinking',
       credits: 4,
       level: 100,
@@ -64,6 +67,7 @@ const defaultData: StudentData = {
     {
       id: 'core-quest',
       courseCode: 'QRDA 101',
+      code: 'QRDA 101',
       title: 'Quantitative Reasoning',
       credits: 4,
       level: 100,
@@ -76,6 +80,7 @@ const defaultData: StudentData = {
     {
       id: 'major-cs1',
       courseCode: 'CS 201',
+      code: 'CS 201',
       title: 'Data Structures & Algorithms',
       credits: 4,
       level: 200,
@@ -91,6 +96,7 @@ const defaultData: StudentData = {
     {
       id: 'major-cs2',
       courseCode: 'CS 250',
+      code: 'CS 250',
       title: 'Programming for Data Science & Visualization',
       credits: 4,
       level: 200,
@@ -106,6 +112,7 @@ const defaultData: StudentData = {
     {
       id: 'major-cs3',
       courseCode: 'CS 310',
+      code: 'CS 310',
       title: 'Databases',
       credits: 4,
       level: 300,
@@ -118,6 +125,7 @@ const defaultData: StudentData = {
     {
       id: 'major-cs4',
       courseCode: 'CS 320',
+      code: 'CS 320',
       title: 'Machine Learning',
       credits: 4,
       level: 300,
@@ -130,6 +138,7 @@ const defaultData: StudentData = {
     {
       id: 'minor-1',
       courseCode: 'ECON 101',
+      code: 'ECON 101',
       title: 'Principles of Economics',
       credits: 4,
       level: 100,
@@ -145,6 +154,7 @@ const defaultData: StudentData = {
     {
       id: 'minor-2',
       courseCode: 'ECON 210',
+      code: 'ECON 210',
       title: 'Intermediate Microeconomics',
       credits: 4,
       level: 200,
@@ -158,6 +168,7 @@ const defaultData: StudentData = {
     {
       id: 'exploratory-e1',
       courseCode: 'ART 120',
+      code: 'ART 120',
       title: 'Vietnamese Art History',
       credits: 4,
       level: 100,
@@ -172,6 +183,7 @@ const defaultData: StudentData = {
     {
       id: 'elp-1',
       courseCode: 'ELP 201',
+      code: 'ELP 201',
       title: 'Civic Engagement Internship',
       credits: 2,
       level: 200,
@@ -184,6 +196,7 @@ const defaultData: StudentData = {
     {
       id: 'moet-1',
       courseCode: 'PE 101',
+      code: 'PE 101',
       title: 'Physical Education',
       credits: 0,
       level: 100,
@@ -238,12 +251,38 @@ function cloneData(data: StudentData): StudentData {
   return JSON.parse(JSON.stringify(data));
 }
 
+function normalizeCourse(course: any, index: number): Course {
+  const categories: Course['categories'] = Array.isArray(course.categories) && course.categories.length
+    ? course.categories
+    : course.category
+    ? [course.category]
+    : ['elective'];
+
+  const courseCode = course.courseCode || course.code || `course-${index}`;
+
+  return {
+    ...course,
+    id: course.id || `course-${index}`,
+    courseCode,
+    code: course.code || courseCode,
+    categories,
+    status: course.status || 'planned',
+    countsTowardGPA: course.countsTowardGPA ?? !categories.includes('moet'),
+  } as Course;
+}
+
+function normalizeStudentData(data: StudentData): StudentData {
+  const normalizedCourses = (data.courses || []).map((course, index) => normalizeCourse(course, index));
+  return { ...data, courses: normalizedCourses };
+}
+
 export function loadStudentData(): StudentData {
   if (hasLocalStorage) {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        return JSON.parse(raw) as StudentData;
+        const normalized = normalizeStudentData(JSON.parse(raw) as StudentData);
+        return cloneData(normalized);
       } catch (error) {
         console.warn('Failed to parse student data, resetting to defaults', error);
       }
@@ -258,10 +297,11 @@ export function loadStudentData(): StudentData {
 }
 
 function persistData(data: StudentData) {
+  const normalized = normalizeStudentData(data);
   if (hasLocalStorage) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
   } else {
-    memoryCache = cloneData(data);
+    memoryCache = cloneData(normalized);
   }
 }
 
@@ -414,6 +454,7 @@ export function parseCsv(content: string): Course[] {
     return {
       id: baseId,
       courseCode: cellMap.courseCode,
+      code: cellMap.courseCode,
       title: cellMap.title,
       credits,
       level: 100,
@@ -443,7 +484,7 @@ export function importCourses(courses: Course[]) {
   const existingIds = new Set(data.courses.map((c) => c.id));
   courses.forEach((course) => {
     const id = existingIds.has(course.id) ? `${course.id}-${Date.now()}` : course.id;
-    data.courses.push({ ...course, id });
+    data.courses.push(normalizeCourse({ ...course, id }, data.courses.length));
   });
   persistData(data);
   return data.courses;

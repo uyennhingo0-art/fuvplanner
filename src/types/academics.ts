@@ -31,6 +31,12 @@ export type Grade =
 export interface Course {
   id: string;
   courseCode: string;
+  /**
+   * Compatibility alias for older datasets that used `code` instead of `courseCode`.
+   * New code should prefer `courseCode`, but we keep this optional field so data
+   * imported from another branch still loads without breaking.
+   */
+  code?: string;
   title: string;
   credits: number;
   level: number;
