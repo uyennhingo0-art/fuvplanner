@@ -1,43 +1,27 @@
+import { useMemo, useState } from 'react';
 import { RequirementBlock } from '../components/RequirementBlock';
 import { AlertBanner } from '../components/AlertBanner';
-import { CourseCard } from '../components/CourseCard';
-import { Course } from '../types';
+import { Course } from '../types/academics';
+import { loadStudentData, updateCourseStatus, recordGrade } from '../api/dataStore';
+
+const gradeOptions = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F', 'P', 'NP'];
 
 export function MOETPage() {
-  const politicalCourses: Course[] = [
-    {
-      id: 'moet1',
-      code: 'POL 101',
-      title: 'Introduction to Vietnamese Politics',
-      credits: 2,
-      level: 'foundation',
-      category: 'moet',
-      prerequisites: [],
-      status: 'completed',
-      grade: 'A',
-    },
-    {
-      id: 'moet2',
-      code: 'POL 102',
-      title: 'History of Vietnamese Communist Party',
-      credits: 2,
-      level: 'foundation',
-      category: 'moet',
-      prerequisites: [],
-      status: 'completed',
-      grade: 'B+',
-    },
-    {
-      id: 'moet3',
-      code: 'POL 103',
-      title: 'Constitutional Law',
-      credits: 2,
-      level: 'foundation',
-      category: 'moet',
-      prerequisites: [],
-      status: 'in_progress',
-    },
-  ];
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const data = useMemo(() => loadStudentData(), [refreshIndex]);
+  const moetCourses = data.courses.filter((course) => course.categories.includes('moet'));
+
+  const handleStatusChange = (course: Course, status: Course['status']) => {
+    updateCourseStatus(course.id, status);
+    setRefreshIndex((value) => value + 1);
+  };
+
+  const handleGradeChange = (course: Course, grade: Course['grade']) => {
+    recordGrade(course.id, grade);
+    setRefreshIndex((value) => value + 1);
+  };
+
+  const politicalCourses = moetCourses;
 
   const militaryModules = [
     { id: 1, name: 'Military History & Theory', completed: true, hours: 30 },
@@ -70,29 +54,55 @@ export function MOETPage() {
         <RequirementBlock
           title="Political Theory Courses"
           requiredCredits={6}
-          completedCredits={4}
+          completedCredits={politicalCourses
+            .filter((c) => c.status === 'completed')
+            .reduce((sum, c) => sum + c.credits, 0)}
           description="Study Vietnamese history, governance, and political ideology"
           rules={[
-            'Complete at least 5 courses totaling 6+ credits',
-            'Must include History of VCP',
-            'Constitutional Law recommended',
-            'Focus on Vietnamese governance and society',
+            'These hours/credits do not count toward the 128-credit degree',
+            'Good to track completion for graduation clearance',
           ]}
           defaultExpanded
         >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {politicalCourses.map((course) => (
-              <CourseCard key={course.id} course={course} />
+              <div key={course.id} className="p-3 rounded-lg border border-gray-200 bg-white space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900">{course.courseCode}</p>
+                    <p className="text-sm text-gray-600">{course.title}</p>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">{course.credits} cr</span>
+                </div>
+                <div className="flex gap-2 items-center text-sm">
+                  <label className="text-xs text-gray-600">Status</label>
+                  <select
+                    value={course.status}
+                    onChange={(e) => handleStatusChange(course, e.target.value as Course['status'])}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="planned">Planned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 items-center text-sm">
+                  <label className="text-xs text-gray-600">Grade</label>
+                  <select
+                    value={course.grade ?? ''}
+                    onChange={(e) => handleGradeChange(course, (e.target.value || null) as Course['grade'])}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="">Not set</option>
+                    {gradeOptions.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             ))}
-          </div>
-          <div className="mt-4 p-4 bg-secondary bg-opacity-20 rounded-lg border border-secondary">
-            <h4 className="font-semibold text-gray-900 mb-2 text-sm">Political Theory Electives</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• POL 104: International Relations</li>
-              <li>• POL 105: Southeast Asian Politics</li>
-              <li>• POL 106: Vietnamese Foreign Policy</li>
-              <li>• SOC 201: Vietnamese Society</li>
-            </ul>
           </div>
         </RequirementBlock>
 
@@ -113,9 +123,7 @@ export function MOETPage() {
               <div
                 key={module.id}
                 className={`p-4 rounded-lg border ${
-                  module.completed
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-yellow-50 border-yellow-200'
+                  module.completed ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -125,9 +133,7 @@ export function MOETPage() {
                   </div>
                   <div
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      module.completed
-                        ? 'bg-green-200 text-green-800'
-                        : 'bg-yellow-200 text-yellow-800'
+                      module.completed ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'
                     }`}
                   >
                     {module.completed ? 'Completed' : 'Pending'}
@@ -138,8 +144,8 @@ export function MOETPage() {
           </div>
           <div className="mt-4 p-4 bg-secondary bg-opacity-20 rounded-lg border border-secondary">
             <p className="text-sm text-gray-700">
-              <span className="font-semibold">Note:</span> Military training is typically conducted by the
-              university's military department. Schedule sessions through the student affairs office.
+              <span className="font-semibold">Note:</span> Military training is typically conducted by the university's
+              military department. Schedule sessions through the student affairs office.
             </p>
           </div>
         </RequirementBlock>
@@ -161,9 +167,7 @@ export function MOETPage() {
               <div
                 key={module.id}
                 className={`p-4 rounded-lg border ${
-                  module.completed
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-yellow-50 border-yellow-200'
+                  module.completed ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -173,9 +177,7 @@ export function MOETPage() {
                   </div>
                   <div
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      module.completed
-                        ? 'bg-green-200 text-green-800'
-                        : 'bg-yellow-200 text-yellow-800'
+                      module.completed ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'
                     }`}
                   >
                     {module.completed ? 'Completed' : 'Pending'}
@@ -186,57 +188,11 @@ export function MOETPage() {
           </div>
           <div className="mt-4 p-4 bg-secondary bg-opacity-20 rounded-lg border border-secondary">
             <p className="text-sm text-gray-700">
-              <span className="font-semibold">Sports Options:</span> Badminton, Basketball, Volleyball,
-              Traditional Martial Arts, Swimming, Aerobics, Dance
+              <span className="font-semibold">Sports Options:</span> Badminton, Basketball, Volleyball, Traditional Martial
+              Arts, Swimming, Aerobics, Dance
             </p>
           </div>
         </RequirementBlock>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-accent bg-opacity-10 rounded-lg p-6 border border-accent">
-          <h3 className="font-semibold text-gray-900 mb-2">Political Courses</h3>
-          <div className="text-3xl font-bold text-primary">4/6 cr</div>
-          <p className="text-sm text-gray-600 mt-1">Completed - 2 credits remaining</p>
-        </div>
-
-        <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-          <h3 className="font-semibold text-gray-900 mb-2">Military Training</h3>
-          <div className="text-3xl font-bold text-blue-600">50/85 hrs</div>
-          <p className="text-sm text-gray-600 mt-1">In progress - 35 hours remaining</p>
-        </div>
-
-        <div className="bg-green-50 rounded-lg p-6 border border-green-200">
-          <h3 className="font-semibold text-gray-900 mb-2">Physical Education</h3>
-          <div className="text-3xl font-bold text-green-600">30/60 hrs</div>
-          <p className="text-sm text-gray-600 mt-1">In progress - 30 hours remaining</p>
-        </div>
-      </div>
-
-      <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Important Information</h2>
-        <ul className="space-y-2 text-sm text-gray-700">
-          <li className="flex items-start gap-2">
-            <span className="font-semibold text-primary flex-shrink-0">•</span>
-            <span>MOET requirements are mandatory for all Vietnamese citizens and permanent residents</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-semibold text-primary flex-shrink-0">•</span>
-            <span>These credits/hours do not count toward your 128-credit degree requirement</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-semibold text-primary flex-shrink-0">•</span>
-            <span>International students may be exempt - check with International Student Office</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-semibold text-primary flex-shrink-0">•</span>
-            <span>Must be completed before graduation</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-semibold text-primary flex-shrink-0">•</span>
-            <span>Contact Student Affairs for exemption requests or accommodations</span>
-          </li>
-        </ul>
       </div>
     </div>
   );

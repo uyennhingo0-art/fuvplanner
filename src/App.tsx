@@ -11,6 +11,7 @@ import { PlannerPage } from './pages/PlannerPage';
 import { StudyGroupsPage } from './pages/StudyGroupsPage';
 import { CapstonePage } from './pages/CapstonePage';
 import { MOETPage } from './pages/MOETPage';
+import { AdminPage } from './pages/AdminPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -37,6 +38,8 @@ function App() {
         return <CapstonePage />;
       case 'moet':
         return <MOETPage />;
+      case 'admin':
+        return <AdminPage />;
       default:
         return <HomePage onNavigate={setCurrentPage} />;
     }

@@ -1,4 +1,4 @@
-import { Course } from '../types';
+import { Course } from '../types/academics';
 
 interface CourseCardProps {
   course: Course;
@@ -6,13 +6,6 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course, onClick }: CourseCardProps) {
-  const levelColors = {
-    foundation: 'bg-blue-100 text-blue-800',
-    intermediate: 'bg-green-100 text-green-800',
-    advanced: 'bg-amber-100 text-amber-800',
-    capstone: 'bg-purple-100 text-purple-800',
-  };
-
   const statusColors = {
     planned: 'bg-gray-400',
     in_progress: 'bg-yellow-400',
@@ -27,7 +20,7 @@ export function CourseCard({ course, onClick }: CourseCardProps) {
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-gray-900">{course.code}</h3>
+            <h3 className="font-semibold text-gray-900">{course.courseCode}</h3>
             {course.status && (
               <div className={`w-2 h-2 rounded-full ${statusColors[course.status]}`} />
             )}
@@ -35,8 +28,8 @@ export function CourseCard({ course, onClick }: CourseCardProps) {
           <p className="text-sm text-gray-600 mb-2">{course.title}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className={`px-2 py-1 text-xs font-medium rounded ${levelColors[course.level]}`}>
-            {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
+          <span className={`px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800`}>
+            {course.level}-level
           </span>
           <span className="text-sm font-semibold text-primary">{course.credits} cr</span>
         </div>

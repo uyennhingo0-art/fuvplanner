@@ -1,89 +1,95 @@
-import { CourseCard } from '../components/CourseCard';
-import { RequirementBlock } from '../components/RequirementBlock';
-import { Course } from '../types';
+import { useMemo, useState } from 'react';
+import { updateCourseStatus, recordGrade, loadStudentData } from '../api/dataStore';
+import { Course } from '../types/academics';
+
+const gradeOptions = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F', 'P', 'NP'];
 
 export function CorePage() {
-  const ghCourses: Course[] = [
-    {
-      id: '1',
-      code: 'GH 101',
-      title: 'Critical Reading and Writing',
-      credits: 4,
-      level: 'foundation',
-      category: 'core',
-      prerequisites: [],
-      status: 'completed',
-      grade: 'A',
-    },
-    {
-      id: '2',
-      code: 'GH 201',
-      title: 'Global Humanities I',
-      credits: 4,
-      level: 'intermediate',
-      category: 'core',
-      prerequisites: [],
-      status: 'completed',
-      grade: 'A-',
-    },
-  ];
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const data = useMemo(() => loadStudentData(), [refreshIndex]);
+  const coreCourses = data.courses.filter((course) => course.categories.includes('core'));
+
+  const handleStatusChange = (course: Course, status: Course['status']) => {
+    updateCourseStatus(course.id, status);
+    setRefreshIndex((value) => value + 1);
+  };
+
+  const handleGradeChange = (course: Course, grade: Course['grade']) => {
+    recordGrade(course.id, grade);
+    setRefreshIndex((value) => value + 1);
+  };
+
+  const completedCredits = coreCourses
+    .filter((course) => course.status === 'completed')
+    .reduce((sum, course) => sum + course.credits, 0);
 
   return (
     <div className="max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold text-primary mb-2">Core Curriculum</h1>
       <p className="text-gray-600 mb-6">
-        Foundation courses in critical thinking, communication, and interdisciplinary learning
+        Track your core curriculum progress and update statuses or grades as you complete each course.
       </p>
 
-      <div className="space-y-6">
-        <RequirementBlock
-          title="Global Humanities"
-          requiredCredits={12}
-          completedCredits={8}
-          description="Explore major works and ideas across global civilizations"
-          rules={['Complete GH 101, GH 201, and GH 202 in sequence', 'Each is prerequisite for next']}
-          defaultExpanded
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {ghCourses.map((course) => (
-              <CourseCard key={course.id} course={course} />
-            ))}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-sm text-gray-600">Completed Core Credits</p>
+            <p className="text-2xl font-bold text-primary">{completedCredits} / 16</p>
           </div>
-        </RequirementBlock>
-
-        <RequirementBlock
-          title="Modern Vietnamese Culture & Society"
-          requiredCredits={8}
-          completedCredits={4}
-          description="Contemporary Vietnam through historical and cultural lenses"
-          rules={['Must complete MV 101 and MV 201']}
-        />
-
-        <RequirementBlock
-          title="Design & Systems Thinking"
-          requiredCredits={4}
-          completedCredits={4}
-          description="Introduction to design thinking and systems analysis"
-          rules={['One 4-credit course required']}
-        />
-
-        <RequirementBlock
-          title="QUEST"
-          requiredCredits={8}
-          completedCredits={8}
-          description="Quantitative reasoning and scientific inquiry"
-          rules={['Choose 2 courses from QRDA, SI, or Stats']}
-        />
+          <button
+            onClick={() => setRefreshIndex((value) => value + 1)}
+            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-900"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="mt-8 bg-secondary bg-opacity-30 rounded-lg p-6">
-        <h3 className="font-semibold text-primary mb-2">Summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div><p className="text-gray-600">Required</p><p className="text-2xl font-bold text-primary">32</p></div>
-          <div><p className="text-gray-600">Completed</p><p className="text-2xl font-bold text-green-600">28</p></div>
-          <div><p className="text-gray-600">In Progress</p><p className="text-2xl font-bold text-yellow-600">4</p></div>
-          <div><p className="text-gray-600">Remaining</p><p className="text-2xl font-bold text-gray-600">0</p></div>
-        </div>
+      <div className="space-y-4">
+        {coreCourses.map((course) => (
+          <div
+            key={course.id}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+          >
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="font-semibold text-gray-900">{course.courseCode}</p>
+                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">{course.credits} cr</span>
+              </div>
+              <p className="text-sm text-gray-700">{course.title}</p>
+              <p className="text-xs text-gray-500">
+                {course.term} {course.year} · {course.instructor ?? 'TBD'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 items-center">
+              <label className="text-xs text-gray-600">Status</label>
+              <select
+                value={course.status}
+                onChange={(e) => handleStatusChange(course, e.target.value as Course['status'])}
+                className="border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="planned">Planned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+
+              <label className="text-xs text-gray-600">Grade</label>
+              <select
+                value={course.grade ?? ''}
+                onChange={(e) => handleGradeChange(course, (e.target.value || null) as Course['grade'])}
+                className="border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Not set</option>
+                {gradeOptions.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
